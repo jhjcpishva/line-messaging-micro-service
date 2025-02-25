@@ -1,6 +1,7 @@
 import logging
 import time
 import io
+import json
 from uuid import uuid4
 from typing import Union
 
@@ -35,6 +36,7 @@ class PushMessageTTSRequest(BaseModel):
     volume: Union[float, None] = None
     pitch: Union[float, None] = None
     speed: Union[float, None] = None
+    speaker: Union[int, None] = None
 
 
 @app.post(f"{config.CONTEXT_PATH}push_message/{{user_id}}/tts")
@@ -42,7 +44,7 @@ async def push_message_tts(user_id: str, body: PushMessageTTSRequest):
     logger.info(f"push_message user_id: {user_id}")
 
     timestamp = int(time.time())
-    filename = f"{timestamp}_aivisspeech-synthesis_{uuid4()}.mp3"
+    filename = f"{config.S3_STORAGE_TTS_UPLOAD_PATH}/{timestamp}_aivisspeech-synthesis_{uuid4()}"
     logger.info(f"filename: {filename}")
     
     # Generate speech mp3 using AIVIS Speech API
@@ -57,6 +59,8 @@ async def push_message_tts(user_id: str, body: PushMessageTTSRequest):
             params["pitch"] = body.pitch
         if body.speed:
             params["speed"] = body.speed
+        if body.speaker:
+            params["speaker"] = body.speaker
 
         audio_response = await client.get(f"{config.AIVIS_SPEECH_FAST_API_URL}/synthesis", params=params, timeout=None)
         media_type = audio_response.headers.get('Content-Type')
@@ -68,7 +72,14 @@ async def push_message_tts(user_id: str, body: PushMessageTTSRequest):
     audio_length = int(audio_length * 1000)
         
     # Upload to S3 bucket
-    s3_result = storage.put_file(config.S3_STORAGE_BUCKET_NAME, filename, io.BytesIO(audio_data), len(audio_data), media_type)
+    s3_result = storage.put_file(config.S3_STORAGE_BUCKET_NAME, f"{filename}.mp3", io.BytesIO(audio_data), len(audio_data), media_type)
+    
+    # Upload meta data to S3 bucket
+    meta_json = json.dumps({
+        "tts": body.tts,
+        "audio_length": audio_length
+    })
+    s3_result_meta = storage.put_file(config.S3_STORAGE_BUCKET_NAME, f"{filename}.meta.json", io.BytesIO(meta_json.encode()), len(meta_json), "application/json")
 
     # Send to LINE Messaging API
     lm_result = lm.push_audio_message(
