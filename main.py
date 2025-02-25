@@ -17,7 +17,7 @@ from s3_storage import S3Storage
 
 logger = logging.getLogger('uvicorn.app')
 
-app = FastAPI()
+app = FastAPI(debug=True)
 
 lm = LineMessaging(access_token=config.LINE_CHANNEL_ACCESS_TOKEN, logger=logger)
 storage = S3Storage(
