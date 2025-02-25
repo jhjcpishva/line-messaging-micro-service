@@ -6,6 +6,7 @@ from uuid import uuid4
 import httpx
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, Response
+from mutagen.mp3 import MP3
 
 import config
 from line_messaging import LineMessaging
@@ -32,13 +33,36 @@ async def speech():
     filename = f"{timestamp}_aivisspeech-synthesis_{uuid4()}.mp3"
     logger.info(f"filename: {filename}")
     
+    # Generate speech mp3 using AIVIS Speech API
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{config.AIVIS_SPEECH_FAST_API_URL}/synthesis?text=Hello%20World!", timeout=None)
-        media_type = response.headers.get('Content-Type')
-        audio_data = response.content
-    result = storage.put_file(config.S3_STORAGE_BUCKET_NAME, filename, io.BytesIO(audio_data), len(audio_data), media_type)
+        params = {
+            "text": "Hello World!",
+            "volume": 0.3,
+            "pitch": 0,
+            "speed": 1,
+            "format": "mp3",
+        }
+        audio_response = await client.get(f"{config.AIVIS_SPEECH_FAST_API_URL}/synthesis",params=params, timeout=None)
+        media_type = audio_response.headers.get('Content-Type')
+        audio_data = audio_response.content
 
-    return JSONResponse({"upload": storage.get_public_url(result), "media_type": media_type})
+    # Get audio length
+    # Note: LINE AudioMessage still works even `audio_length = 0`, following documentation for now but might able to skip dependency
+    audio_length = MP3(io.BytesIO(audio_data)).info.length  # seconds in float
+    audio_length = int(audio_length * 1000)
+        
+    # Upload to S3 bucket
+    s3_result = storage.put_file(config.S3_STORAGE_BUCKET_NAME, filename, io.BytesIO(audio_data), len(audio_data), media_type)
+
+    # Send to LINE Messaging API
+    lm_result = lm.push_audio_message("U123...", audio_url=storage.get_public_url(s3_result), audio_length=audio_length)
+
+    return JSONResponse({
+        "upload": storage.get_public_url(s3_result), 
+        "media_type": media_type, 
+        "duration": audio_length,
+        "lm_result": lm_result.to_dict(),
+        })
 
 
 @app.get(f"{config.CONTEXT_PATH}debug")
