@@ -21,7 +21,7 @@ storage = S3Storage(
     host=config.S3_STORAGE_HOST,
     access_key=config.S3_STORAGE_ACCESS_KEY,
     secret_key=config.S3_STORAGE_SECRET_KEY,
-    secure=False,
+    secure=config.S3_STORAGE_SECURE,
     logger=logger,
     public_url=config.S3_STORAGE_PUBLIC_URL,
 )
