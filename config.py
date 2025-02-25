@@ -21,3 +21,8 @@ LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "")
 
 PORT = int(os.getenv("APP_PORT", "8000"))
 CONTEXT_PATH = os.getenv("CONTEXT_PATH", "/")
+
+def verify():
+    if not S3_STORAGE_PUBLIC_URL.startswith('https://'):
+        raise ValueError("S3_STORAGE_PUBLIC_URL must be an HTTPS URL.")
+    
