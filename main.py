@@ -2,10 +2,12 @@ import logging
 import time
 import io
 from uuid import uuid4
+from typing import Union
 
 import httpx
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from mutagen.mp3 import MP3
 
 import config
@@ -27,8 +29,18 @@ storage = S3Storage(
 )
 
 
-@app.get(f"{config.CONTEXT_PATH}speech")
-async def speech():
+class PushMessageTTSRequest(BaseModel):
+    tts: str
+    text: Union[str, None] = None
+    volume: Union[float, None] = None
+    pitch: Union[float, None] = None
+    speed: Union[float, None] = None
+
+
+@app.post(f"{config.CONTEXT_PATH}push_message/{{user_id}}/tts")
+async def push_message_tts(user_id: str, body: PushMessageTTSRequest):
+    logger.info(f"push_message user_id: {user_id}")
+
     timestamp = int(time.time())
     filename = f"{timestamp}_aivisspeech-synthesis_{uuid4()}.mp3"
     logger.info(f"filename: {filename}")
@@ -36,13 +48,17 @@ async def speech():
     # Generate speech mp3 using AIVIS Speech API
     async with httpx.AsyncClient() as client:
         params = {
-            "text": "Hello World!",
-            "volume": 0.3,
-            "pitch": 0,
-            "speed": 1,
+            "text": body.tts,
             "format": "mp3",
         }
-        audio_response = await client.get(f"{config.AIVIS_SPEECH_FAST_API_URL}/synthesis",params=params, timeout=None)
+        if body.volume:
+            params["volume"] = body.volume
+        if body.pitch:
+            params["pitch"] = body.pitch
+        if body.speed:
+            params["speed"] = body.speed
+
+        audio_response = await client.get(f"{config.AIVIS_SPEECH_FAST_API_URL}/synthesis", params=params, timeout=None)
         media_type = audio_response.headers.get('Content-Type')
         audio_data = audio_response.content
 
@@ -55,13 +71,17 @@ async def speech():
     s3_result = storage.put_file(config.S3_STORAGE_BUCKET_NAME, filename, io.BytesIO(audio_data), len(audio_data), media_type)
 
     # Send to LINE Messaging API
-    lm_result = lm.push_audio_message("U123...", audio_url=storage.get_public_url(s3_result), audio_length=audio_length)
+    lm_result = lm.push_audio_message(
+        user_id,
+        text=body.text,
+        audio_url=storage.get_public_url(s3_result),
+        audio_length=audio_length,
+        )
 
     return JSONResponse({
-        "upload": storage.get_public_url(s3_result), 
-        "media_type": media_type, 
-        "duration": audio_length,
-        "lm_result": lm_result.to_dict(),
+        "sentMessages": lm_result.to_dict()["sentMessages"],
+        "tts_audio_url": storage.get_public_url(s3_result), 
+        "tts_audio_duration": audio_length,
         })
 
 
