@@ -69,7 +69,7 @@ async def push_message_tts(user_id: str, body: PushMessageTTSRequest):
         audio_data = audio_response.content
 
     # Get audio length
-    # Note: LINE AudioMessage still works even `audio_length = 0`, following documentation for now but might able to skip dependency
+    # Note: LINE AudioMessage still works even `audio_length` is fake value. Probably used for audio length preview before loading
     audio_length = MP3(io.BytesIO(audio_data)).info.length  # seconds in float
     audio_length = int(audio_length * 1000)
         
