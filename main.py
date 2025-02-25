@@ -34,7 +34,7 @@ async def debug():
 
 @app.get(f"{config.CONTEXT_PATH}health")
 async def health_check():
-    return JSONResponse({ "unix": int(time.time()) })
+    return JSONResponse({ "timestamp": int(time.time()) })
 
 
 if __name__ == '__main__':
