@@ -1,10 +1,47 @@
 import logging
 from typing import BinaryIO, Dict
 from dataclasses import dataclass
+from datetime import datetime
 
 from minio import Minio
+from minio.helpers import ObjectWriteResult
+from minio.datatypes import Object
 
 
+@dataclass
+class BaseFileObject:
+    bucket_name: str
+    object_name: str
+    etag: str
+    
+@dataclass
+class CreatedFileObject(BaseFileObject):
+    ...
+    
+    @classmethod
+    def from_response(cls, response: ObjectWriteResult):
+        return cls(
+            bucket_name=response.bucket_name,
+            object_name=response.object_name,
+            etag=response.etag,
+        )
+        
+@dataclass
+class ListFileObject(BaseFileObject):
+    size: int
+    is_dir: bool
+    
+    @classmethod
+    def from_response(cls, response: Object):
+        return cls(
+            bucket_name=response.bucket_name,
+            object_name=response.object_name,
+            etag=response.etag,
+            size=response.size,
+            is_dir=response.is_dir,
+        )
+    
+    
 class S3Storage:
     client: Minio
     logger: logging.Logger
@@ -26,33 +63,15 @@ class S3Storage:
     def fetch_file(self, bucket_name, file_name) -> BinaryIO:
         object = self.client.get_object(bucket_name, file_name)
         return object
+
     
-    def list_files(self, bucket_name):
+    def list_files(self, bucket_name) -> list[ListFileObject]:
         """List all files in a specified bucket."""
         objects = self.client.list_objects(bucket_name, include_user_meta=True)
-        def _to_public_url(obj):
-            if not len(self.public_url):
-                return None
-            if obj.is_dir: 
-                return None
-            return f"{self.public_url}/{obj.bucket_name}/{obj.object_name}"
-        
-        def _to_dict(obj):
-            last_modified = obj.last_modified.strftime('%Y-%m-%dT%H:%M:%S%z') if obj.last_modified else None
-            return {
-                "bucket_name": obj.bucket_name,
-                "object_name": obj.object_name,
-                "size": obj.size,
-                "metadata": obj.metadata,
-                "etag": obj.etag,
-                "last_modified": last_modified,
-                "url": _to_public_url(obj)
-            }
-        
-        return [_to_dict(obj) for obj in objects]
+        return [ListFileObject.from_response(obj) for obj in objects]
 
 
-    def put_file(self, bucket_name, file_name, content: BinaryIO, length:int, content_type:str=None, metadata: Dict = None):
+    def put_file(self, bucket_name, file_name, content: BinaryIO, length:int, content_type:str=None, metadata: Dict = None) -> CreatedFileObject:
         """
         Upload a file to the specified MinIO bucket.
 
@@ -63,14 +82,11 @@ class S3Storage:
         """
         result = self.client.put_object(bucket_name, file_name, content, length, content_type=content_type, metadata=metadata)
         self.logger.info(result)
-        return {
-            "status": "success",
-            "object": {
-                "bucket": result.bucket_name,
-                "name": result.object_name,
-                "etag": result.etag,
-                "last_modified": result.last_modified,
-                "version_id": result.version_id,
-                "location": result.location,
-            }
-        }
+        return CreatedFileObject.from_response(result)
+
+    def get_public_url(self, file_object: CreatedFileObject | ListFileObject) -> str | None:
+        if not len(self.public_url):
+            return None
+        if hasattr(file_object, "is_dir") and file_object.is_dir: 
+            return None
+        return f"{self.public_url}/{file_object.bucket_name}/{file_object.object_name}"

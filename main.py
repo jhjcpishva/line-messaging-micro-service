@@ -1,6 +1,9 @@
 import logging
 import time
+import io
+from uuid import uuid4
 
+import httpx
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, Response
 
@@ -23,14 +26,29 @@ storage = S3Storage(
 )
 
 
+@app.get(f"{config.CONTEXT_PATH}speech")
+async def speech():
+    timestamp = int(time.time())
+    filename = f"{timestamp}_aivisspeech-synthesis_{uuid4()}.mp3"
+    logger.info(f"filename: {filename}")
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{config.AIVIS_SPEECH_FAST_API_URL}/synthesis?text=Hello%20World!", timeout=None)
+        media_type = response.headers.get('Content-Type')
+        audio_data = response.content
+    result = storage.put_file(config.S3_STORAGE_BUCKET_NAME, filename, io.BytesIO(audio_data), len(audio_data), media_type)
+
+    return JSONResponse({"upload": storage.get_public_url(result), "media_type": media_type})
+
+
 @app.get(f"{config.CONTEXT_PATH}debug")
 async def debug():
     # result = lm.push_text_message("U123...", "message")
-    result = storage.list_files("line-messaging-micro-service")
+    result = storage.list_files(config.S3_STORAGE_BUCKET_NAME)
     # data = b"Hello World!"
-    # result = storage.put_file("line-messaging-micro-service", "test.txt", io.BytesIO(data), len(data), "text/plain", metadata={"key1":"value1"})
-    # return Response(storage.fetch_file("line-messaging-micro-service", "test.txt").read(), media_type="text/plain")
-    return JSONResponse({"items": result})
+    # result = storage.put_file(config.S3_STORAGE_BUCKET_NAME, "test.txt", io.BytesIO(data), len(data), "text/plain", metadata={"key1":"value1"})
+    # return Response(storage.fetch_file(config.S3_STORAGE_BUCKET_NAME, "test.txt").read(), media_type="text/plain")
+    return JSONResponse({"items": [r.__dict__ for r in result]})
 
 @app.get(f"{config.CONTEXT_PATH}health")
 async def health_check():
