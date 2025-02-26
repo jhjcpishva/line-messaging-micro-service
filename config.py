@@ -12,6 +12,7 @@ S3_STORAGE_SECRET_KEY = os.getenv("S3_STORAGE_SECRET_KEY").strip()
 S3_STORAGE_SECURE = os.getenv("S3_STORAGE_SECURE", "false").strip().lower() == 'true'
 S3_STORAGE_BUCKET_NAME = os.getenv("S3_STORAGE_BUCKET_NAME").strip()
 S3_STORAGE_TTS_UPLOAD_PATH = os.getenv("S3_STORAGE_TTS_UPLOAD_PATH").strip().strip("/")
+S3_STORAGE_IMAGE_UPLOAD_PATH = os.getenv("S3_STORAGE_IMAGE_UPLOAD_PATH").strip().strip("/")
 S3_STORAGE_PUBLIC_URL = os.getenv("S3_STORAGE_PUBLIC_URL", "").rstrip('/')
 
 AIVIS_SPEECH_FAST_API_URL = os.getenv("AIVIS_SPEECH_FAST_API_URL").rstrip('/')

@@ -7,7 +7,7 @@ from uuid import uuid4
 from typing import Union
 
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from mutagen.mp3 import MP3
@@ -110,6 +110,39 @@ async def push_message_tts(user_id: str, body: PushMessageTTSRequest):
         "sentMessages": lm_result.to_dict()["sentMessages"],
         "tts_audio_url": storage.get_public_url(s3_result), 
         "tts_audio_duration": audio_length,
+        })
+
+
+@app.post(f"{config.CONTEXT_PATH}v1/push_message/{{user_id}}/image")
+async def push_message_image(user_id: str, image: UploadFile = File(), text: Union[str | None] = Form(None)):
+    logger.info(f"push_message user_id: {user_id}")
+    timestamp = int(time.time())
+    filename = f"{config.S3_STORAGE_IMAGE_UPLOAD_PATH}/{timestamp}_image_{uuid4()}"
+    [_img, ext] = image.content_type.split("/")
+    
+    if _img != "image":
+        return JSONResponse({
+            "error": f"'{image.content_type}' is not image type",
+        }, status_code=400)
+    
+    image_content = await image.read()
+    s3_result = storage.put_file(config.S3_STORAGE_BUCKET_NAME, f"{filename}.{ext}", io.BytesIO(image_content), len(image_content), image.content_type)
+    
+    meta_json = json.dumps({
+        "filename": image.filename,
+    })
+    s3_result_meta = storage.put_file(config.S3_STORAGE_BUCKET_NAME, f"{filename}.meta.json", io.BytesIO(meta_json.encode()), len(meta_json), "application/json")
+
+    # Send to LINE Messaging API
+    lm_result = lm.push_image_message(
+        user_id,
+        text=text if text is not None and len(text) else None,
+        image_url=storage.get_public_url(s3_result),
+        )
+
+    return JSONResponse({
+        "sentMessages": lm_result.to_dict()["sentMessages"],
+        "image_url": storage.get_public_url(s3_result), 
         })
 
 

@@ -7,6 +7,7 @@ from linebot.v3.messaging import (
     PushMessageResponse,
     TextMessage,
     AudioMessage,
+    ImageMessage,
     Message,
 )
 
@@ -38,6 +39,18 @@ class LineMessaging:
             if audio_length is None:
                 raise ValueError("Audio length must be provided when audio URL is given")
             messages.append(AudioMessage(originalContentUrl=audio_url, duration=audio_length))
+            
+        if len(messages) == 0:
+            raise ValueError("No message to send")
+            
+        return self.push_message(to, messages)
+
+    def push_image_message(self, to: str, text: str=None, image_url: str=None) -> PushMessageResponse:
+        messages: list[Message] = []
+        if text is not None:
+            messages.append(TextMessage(text=text.strip()))
+        if image_url is not None:
+            messages.append(ImageMessage(originalContentUrl=image_url, previewImageUrl=image_url))
             
         if len(messages) == 0:
             raise ValueError("No message to send")
