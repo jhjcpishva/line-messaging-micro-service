@@ -2,6 +2,7 @@ import logging
 import time
 import io
 import json
+import tomllib
 from uuid import uuid4
 from typing import Union
 
@@ -30,6 +31,10 @@ storage = S3Storage(
     logger=logger,
     public_url=config.S3_STORAGE_PUBLIC_URL,
 )
+
+# collect version
+with open('pyproject.toml', 'rb') as f:
+    running_version = tomllib.load(f).get('project', {}).get('version', {})
 
 
 class PushMessageTTSRequest(BaseModel):
@@ -107,9 +112,15 @@ async def debug():
     # return Response(storage.fetch_file(config.S3_STORAGE_BUCKET_NAME, "test.txt").read(), media_type="text/plain")
     return JSONResponse({"items": [r.__dict__ for r in result]})
 
+
 @app.get(f"{config.CONTEXT_PATH}health")
 async def health_check():
     return JSONResponse({ "timestamp": int(time.time()) })
+
+
+@app.get(f"{config.CONTEXT_PATH}version")
+async def version():
+    return JSONResponse({ "version": running_version })
 
 
 if __name__ == '__main__':
