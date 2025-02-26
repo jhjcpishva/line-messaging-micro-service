@@ -17,7 +17,6 @@ S3_STORAGE_PUBLIC_URL = os.getenv("S3_STORAGE_PUBLIC_URL", "").rstrip('/')
 AIVIS_SPEECH_FAST_API_URL = os.getenv("AIVIS_SPEECH_FAST_API_URL").rstrip('/')
 
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")
-LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "")
 
 PORT = int(os.getenv("APP_PORT", "8000"))
 CONTEXT_PATH = os.getenv("CONTEXT_PATH", "/")
