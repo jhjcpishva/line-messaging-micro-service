@@ -37,6 +37,9 @@ with open('pyproject.toml', 'rb') as f:
     running_version = tomllib.load(f).get('project', {}).get('version', {})
 
 
+class PushMessageTextRequest(BaseModel):
+    text: str
+    
 class PushMessageTTSRequest(BaseModel):
     tts: str
     text: Union[str, None] = None
@@ -46,7 +49,14 @@ class PushMessageTTSRequest(BaseModel):
     speaker: Union[int, None] = None
 
 
-@app.post(f"{config.CONTEXT_PATH}push_message/{{user_id}}/tts")
+@app.post(f"{config.CONTEXT_PATH}v1/push_message/{{user_id}}/text")
+async def push_simple_text(user_id: str, body: PushMessageTextRequest):
+    logger.info(f"push_message user_id: {user_id}")
+    result = lm.push_text_message(user_id, text=body.text)
+    return JSONResponse(result.to_dict())
+
+
+@app.post(f"{config.CONTEXT_PATH}v1/push_message/{{user_id}}/tts")
 async def push_message_tts(user_id: str, body: PushMessageTTSRequest):
     logger.info(f"push_message user_id: {user_id}")
 
