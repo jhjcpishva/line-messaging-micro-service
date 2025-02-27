@@ -146,16 +146,6 @@ async def push_message_image(user_id: str, image: UploadFile = File(), text: Uni
         })
 
 
-@app.get(f"{config.CONTEXT_PATH}debug")
-async def debug():
-    # result = lm.push_text_message("U123...", "message")
-    result = storage.list_files(config.S3_STORAGE_BUCKET_NAME)
-    # data = b"Hello World!"
-    # result = storage.put_file(config.S3_STORAGE_BUCKET_NAME, "test.txt", io.BytesIO(data), len(data), "text/plain", metadata={"key1":"value1"})
-    # return Response(storage.fetch_file(config.S3_STORAGE_BUCKET_NAME, "test.txt").read(), media_type="text/plain")
-    return JSONResponse({"items": [r.__dict__ for r in result]})
-
-
 @app.get(f"{config.CONTEXT_PATH}health")
 async def health_check():
     return JSONResponse({ "timestamp": int(time.time()) })
