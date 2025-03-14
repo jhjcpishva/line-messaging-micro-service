@@ -1,5 +1,5 @@
 FROM python:3.11-slim
-LABEL org.opencontainers.image.source="https://github.com/jhjcpishva/LineMessagingMicroService"
+LABEL org.opencontainers.image.source="https://github.com/jhjcpishva/line-messaging-micro-service"
 
 # Install uv.
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
