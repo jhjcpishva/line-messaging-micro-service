@@ -81,7 +81,7 @@ async def push_message_tts(user_id: str, body: PushMessageTTSRequest):
         if body.speaker:
             params["speaker"] = body.speaker
 
-        audio_response = await client.get(f"{config.AIVIS_SPEECH_FAST_API_URL}/synthesis", params=params, timeout=None)
+        audio_response = await client.get(f"{config.AIVIS_SPEECH_API_URL}/synthesis", params=params, timeout=None)
         media_type = audio_response.headers.get('Content-Type')
         audio_data = audio_response.content
 

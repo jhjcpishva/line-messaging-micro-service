@@ -58,7 +58,7 @@ S3_STORAGE_IMAGE_UPLOAD_PATH=/lmms/image/
 S3_STORAGE_PUBLIC_URL=https://localhost:9000/
 # S3_STORAGE_PUBLIC_URL=https://___.ngrok-free.app
 
-AIVIS_SPEECH_FAST_API_URL=http://localhost:8001/
+AIVIS_SPEECH_API_URL=http://localhost:8001/
 
 PORT=8000
 CONTEXT_PATH=/
@@ -93,7 +93,7 @@ services:
       - .env
     environment:
       - S3_STORAGE_HOST=minio:9000
-      - AIVIS_SPEECH_FAST_API_URL=http://aivis-speech-fast-api:8000/
+      - AIVIS_SPEECH_API_URL=http://aivis-speech-api:8000/
     ports:
       - "8000:8000"
 
