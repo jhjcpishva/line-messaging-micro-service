@@ -1,15 +1,18 @@
-FROM python:3.11-slim
+# === Build stage ===
+FROM python:3.11-alpine AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/
+
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv pip install --system --no-cache -r pyproject.toml
+
+# === Final stage ===
+FROM python:3.11-alpine
 LABEL org.opencontainers.image.source="https://github.com/jhjcpishva/line-messaging-micro-service"
 
-# Install uv.
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-# Copy the application into the container.
+WORKDIR /app
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY . /app
 
-# Install the application dependencies.
-WORKDIR /app
-RUN uv sync --frozen --no-cache
-
-# Run the application.
-CMD ["uv", "run", "main.py"]
+CMD ["python", "main.py"]
